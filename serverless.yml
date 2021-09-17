@@ -1,0 +1,62 @@
+service: easy-bank
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  iamRoleStatements:
+    - Effect: Allow
+      Action: dynamodb:scan
+      Resource: arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/mutualfunds
+    - Effect: Allow
+      Action: execute-api:invoke
+      Resource: arn:aws:execute-api:${aws:region}:${aws:accountId}:*/*/GET/mutualfunds
+  
+functions:
+  get-index:
+    handler: functions/get-index.handler
+    events:
+      - http:
+          method: GET
+          path: /
+    environment:
+      mutualfunds_api: https://po684a8j01.execute-api.us-east-1.amazonaws.com/dev/mutualfunds         
+      cognito_user_pool_id: us-east-1_ypULQRDPY
+      cognito_client_id: 18hf2t93jhh11p6fb1h9526drn
+
+  get-mutualfunds:
+    handler: functions/get-mutualfunds.handler
+    events:
+      - http:
+          path: /mutualfunds/
+          method: GET
+          authorizer: aws_iam
+    environment:
+      mutualfunds_table: "mutualfunds"
+
+  search-mutualfunds:
+    handler: functions/search-mutualfunds.handler
+    events:
+      - http:
+          path: /mutualfunds/search
+          method: post
+          authorizer:
+            arn: arn:aws:cognito-idp:us-east-1:688120988248:userpool/us-east-1_ypULQRDPY
+    environment:
+      mutualfunds_table: "mutualfunds"
+
+
+resources:
+  Resources:
+    mutualfundsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: mutualfunds
+        AttributeDefinitions:
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: name
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
